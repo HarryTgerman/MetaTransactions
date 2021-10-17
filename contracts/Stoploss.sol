@@ -126,8 +126,8 @@ contract Stoploss is IModule, Order {
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
-    ) external override returns (uint256 bought) {
-        (IERC20 outputToken, uint256 minReturn) = abi.decode(
+    ) external override returns (uint256 sold) {
+        (IERC20 outputToken, uint256 _minReturn) = abi.decode(
             _data,
             (IERC20, uint256)
         );
@@ -136,25 +136,26 @@ contract Stoploss is IModule, Order {
 
         // Do not trust on _inputToken, it can mismatch the real balance
         uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
+        // Handler gets Input Tokens
         _transferAmount(_inputToken, address(handler), inputAmount);
 
         handler.handle(
             _inputToken,
             outputToken,
             inputAmount,
-            minReturn,
+            _minReturn,
             _auxData
         );
 
-        bought = PineUtils.balanceOf(outputToken, address(this));
+        sold = PineUtils.balanceOf(outputToken, address(this));
         require(
-            bought >= minReturn,
-            "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS"
+            sold < _minReturn,
+            "StopLossOrders#execute: TO_MANY_TOKENS_TO_SELL"
         );
 
-        _transferAmount(outputToken, _owner, bought);
+        _transferAmount(outputToken, _owner, sold);
 
-        return bought;
+        return sold;
     }
 
     /**
