@@ -118,7 +118,7 @@ contract Stoploss is IModule, Order {
      * @param _owner - Address of the order's owner
      * @param _data - Bytes of the order's data
      * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
-     * @return bought - amount of output token bought
+     * @return protectedFunds - amount of output token in saved value
      */
     function execute(
         IERC20 _inputToken,
@@ -126,10 +126,10 @@ contract Stoploss is IModule, Order {
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
-    ) external override returns (uint256 sold) {
-        (IERC20 outputToken, uint256 _minReturn) = abi.decode(
+    ) external override returns (uint256 protectedFunds) {
+        (IERC20 outputToken, uint256 _stoploss, uint256 _slippage) = abi.decode(
             _data,
-            (IERC20, uint256)
+            (IERC20, uint256, uint256)
         );
 
         IHandler handler = abi.decode(_auxData, (IHandler));
@@ -143,19 +143,23 @@ contract Stoploss is IModule, Order {
             _inputToken,
             outputToken,
             inputAmount,
-            _minReturn,
+            _stoploss,
             _auxData
         );
 
-        sold = PineUtils.balanceOf(outputToken, address(this));
+        protectedFunds = PineUtils.balanceOf(outputToken, address(this));
         require(
-            sold < _minReturn,
-            "StopLossOrders#execute: TO_MANY_TOKENS_TO_SELL"
+            protectedFunds <= _stoploss,
+            "StopLossOrders#execute: STOPLOSS_THRESHOLD_NOT_REACHED"
+        );
+        require(
+            protectedFunds >= _slippage,
+            "StopLossOrders#execute: OUTSIDE_SLIPPAGE"
         );
 
-        _transferAmount(outputToken, _owner, sold);
+        _transferAmount(outputToken, _owner, protectedFunds);
 
-        return sold;
+        return protectedFunds;
     }
 
     /**
@@ -172,18 +176,19 @@ contract Stoploss is IModule, Order {
         bytes calldata _data,
         bytes calldata _auxData
     ) external view override returns (bool) {
-        (IERC20 outputToken, uint256 minReturn) = abi.decode(
+        (IERC20 outputToken, uint256 _stoploss, uint256 _slippage) = abi.decode(
             _data,
-            (IERC20, uint256)
+            (IERC20, uint256, uint256)
         );
         IHandler handler = abi.decode(_auxData, (IHandler));
 
         return
-            handler.canHandle(
+            handler.canHandleStoploss(
                 _inputToken,
                 outputToken,
                 _inputAmount,
-                minReturn,
+                _stoploss,
+                _slippage,
                 _auxData
             );
     }

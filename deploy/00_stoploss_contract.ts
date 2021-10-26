@@ -1,19 +1,32 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {parseEther} from 'ethers/lib/utils';
+import config from '../config';
+import { getChainId } from 'hardhat';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
   const {deploy} = deployments;
 
-  const {deployer, simpleERC20Beneficiary} = await getNamedAccounts();
+  const {deployer} = await getNamedAccounts();
 
-  await deploy('SimpleERC20', {
+  const deploymentProps = config[await getChainId()]
+  
+  const Stoploss = await deploy('Stoploss', {
     from: deployer,
-    args: [simpleERC20Beneficiary, parseEther('1000000000')],
     log: true,
   });
-
+  const UniswapV2Handler = await deploy('UniswapV2Handler', {
+    from: deployer,
+    args: [deploymentProps.factory, deploymentProps.WETH, deploymentProps.factroy_code_hash],
+    log: true,
+  });
+//   const GelatoPineCore = await deploy('RelayerPineCore', {
+//     from: deployer,
+//     args: [deployer],
+//     log: true,
+//   });
+ 
   
 };
 
@@ -56,5 +69,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 
 export default func;
-func.tags = ['SimpleERC20'];
+func.tags = ['all'];
 

@@ -151,6 +151,15 @@ interface IHandler {
         uint256 _minReturn,
         bytes calldata _data
     ) external view returns (bool);
+
+    function canHandleStoploss(
+        IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
+        uint256 _stoploss,
+        uint256 _slppage,
+        bytes calldata _data
+    ) external view returns (bool);
 }
 
 // File: contracts/interfaces/uniswapV2/IUniswapV2Pair.sol
@@ -723,6 +732,54 @@ contract UniswapV2Handler is IHandler {
             }
 
             return _estimate(weth, outputToken, bought.sub(fee)) >= _minReturn;
+        }
+    }
+
+    function canHandleStoploss(
+        IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
+        uint256 _stoploss,
+        uint256 _slippage,
+        bytes calldata _data
+    ) external view override returns (bool) {
+        address inputToken = address(_inputToken);
+        address outputToken = address(_outputToken);
+        address weth = address(WETH);
+
+        // Decode extra data
+        (, , uint256 fee) = abi.decode(_data, (address, address, uint256));
+
+        if (inputToken == weth || inputToken == PineUtils.ETH_ADDRESS) {
+            if (_inputAmount <= fee) {
+                return false;
+            }
+            uint256 savedFunds = _estimate(
+                weth,
+                outputToken,
+                _inputAmount.sub(fee)
+            );
+            return savedFunds <= _stoploss && savedFunds >= _slippage;
+        } else if (
+            outputToken == weth || outputToken == PineUtils.ETH_ADDRESS
+        ) {
+            uint256 savedFunds = _estimate(inputToken, weth, _inputAmount);
+
+            if (savedFunds <= fee) {
+                return false;
+            }
+
+            return savedFunds.sub(fee) <= _stoploss && savedFunds >= _slippage;
+        } else {
+            uint256 savedFunds = _estimate(inputToken, weth, _inputAmount);
+            if (savedFunds <= fee) {
+                return false;
+            }
+
+            return
+                _estimate(weth, outputToken, savedFunds.sub(fee)) <=
+                _stoploss &&
+                savedFunds >= _slippage;
         }
     }
 

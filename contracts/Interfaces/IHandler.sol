@@ -41,4 +41,13 @@ interface IHandler {
         uint256 _minReturn,
         bytes calldata _data
     ) external view returns (bool);
+
+    function canHandleStoploss(
+        IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
+        uint256 _stoploss,
+        uint256 _slppage,
+        bytes calldata _data
+    ) external view returns (bool);
 }

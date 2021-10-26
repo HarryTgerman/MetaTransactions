@@ -37,9 +37,15 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 0,
-    simpleERC20Beneficiary: 1,
+    trader: 1,
+    witness: 2
   },
   networks: {
+    hardhat: {
+      forking: {
+        url: "https://speedy-nodes-nyc.moralis.io/292a0f22e2ec7ab8d031889b/polygon/mainnet",
+      }
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
       accounts:
